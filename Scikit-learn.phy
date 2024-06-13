@@ -1,0 +1,65 @@
+import scapy.all as scapy  # For network traffic generation (if using Scapy)
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import IsolationForest  # Unsupervised anomaly detection
+
+# Function to generate simulated network traffic (replace with your data source if using real data)
+def generate_traffic(normal_ratio=0.8, anomaly_types=["SYN Flood", "Port Scan"]):
+    traffic = []
+    for _ in range(1000):  # Adjust number of samples as needed
+        if random.random() < normal_ratio:
+            # Generate normal traffic packets
+            traffic.append(scapy.IP(dst="192.168.1.10")/scapy.TCP(dport=80))  # Example normal traffic
+        else:
+            # Generate anomaly traffic based on specified types
+            if "SYN Flood" in anomaly_types:
+                traffic.append(scapy.IP(dst="192.168.1.10")/scapy.TCP(flags="S"))
+            if "Port Scan" in anomaly_types:
+                traffic.append(scapy.IP(dst="192.168.1.10")/scapy.TCP(dport=random.randint(1, 65535)))
+    return traffic
+
+# Capture or load network traffic (replace with your data capture method if using real data)
+traffic = generate_traffic()
+
+# Extract features from traffic packets (adjust features based on your data)
+features = []
+for packet in traffic:
+    features.append([packet.time, packet.len, packet.dst, packet.sport, packet.dport])
+df = pd.DataFrame(features, columns=["time", "packet_size", "destination_ip", "source_port", "destination_port"])
+
+# Split data into training and testing sets
+X_train, X_test = train_test_split(df, test_size=0.2, random_state=42)
+
+# Train an anomaly detection model (Isolation Forest is used here)
+model = IsolationForest(contamination=0.1)  # Adjust contamination parameter as needed
+model.fit(X_train)
+
+# Evaluate model performance (consider using additional metrics like precision, recall, F1-score)
+y_pred = model.predict(X_test)
+anomaly_count = len(y_pred[y_pred == -1])
+accuracy = (len(y_pred) - anomaly_count) / len(y_pred)
+print(f"Anomaly detection accuracy: {accuracy:.2f}")
+
+# Integrate threat intelligence (optional, replace with placeholder)
+def check_threat_intelligence(ip_address, port):
+    # Simulate threat intelligence lookup (replace with actual threat intelligence feed integration)
+    threat_intel_db = {"10.0.0.1": ["SYN Flood"], "192.168.1.2": ["Port Scan"]}
+    if ip_address in threat_intel_db and port in threat_intel_db[ip_address]:
+        return True
+    return False
+
+# Detect anomalies and correlate with threat intelligence (optional)
+for i, row in X_test.iterrows():
+    if y_pred[i] == -1:  # Indicates anomaly
+        if check_threat_intelligence(row["destination_ip"], row["destination_port"]):
+            print(f"Anomaly detected at {row['time']}: {row['destination_ip']}, port {row['destination_port']} (Potential threat)")
+        else:
+            print(f"Anomaly detected at {row['time']}: {row['destination_ip']}, port {row['destination_port']}")
+
+
+
+** Project: Anomaly Detection and Threat Hunting in Network Traffic using Machine Learning
+Simulating a Network Environment (Ethical Consideration):
+It's crucial to prioritize ethical considerations and avoid capturing traffic on live networks without proper authorization. Here's an approach that respects privacy:
+Set up a controlled test environment using virtual machines or containerization technologies (Docker, Kubernetes).
+Generate realistic network traffic using tools like Scapy or NeMo (Network Monitoring Emulator) to simulate normal and anomalous activities.
